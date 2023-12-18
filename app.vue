@@ -57,15 +57,17 @@ const timerFormatted = computed(() => {
 });
 
 const fetchRandomTextFromAPI = async () => {
-  await fetch('https://api.forismatic.com/api/1.0/?method=getQuote&format=html&lang=ru', {
-    mode: 'no-cors'
+  await fetch('https://stalwart-sunshine-d9907e.netlify.app/https://api.forismatic.com/api/1.0/', {
+    "headers":{"content-type":"application/x-www-form-urlencoded"},
+    "body":"method=getQuote&format=json&key=&lang=ru",
+    "method":"POST"
   })
   .then(response => {
     if (!response.ok) {
       console.log(response);
       throw new Error('Network response was not ok');
     }
-    return response;
+    return response.json();
   })
   .then(data => {
     textFromAPI.value = data.quoteText;
