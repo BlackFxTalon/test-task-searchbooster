@@ -58,7 +58,9 @@ const timerFormatted = computed(() => {
 
 const fetchRandomTextFromAPI = async () => {
   const randomKey = Math.floor(Math.random() * 500000) + 1;
-  const response = await fetch(`https://api.forismatic.com/api/1.0/?method=getQuote&key=${randomKey}&format=json&lang=ru`);
+  const response = await fetch(`https://api.forismatic.com/api/1.0/?method=getQuote&key=${randomKey}&format=json&lang=ru`, {
+    mode: 'no-cors'
+  });
   console.log(response);
   const data = await response.json();
   textFromAPI.value = data.quoteText;
