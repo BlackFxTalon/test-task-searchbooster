@@ -1,6 +1,14 @@
 <template>
   <h1>Наблюдатель searchbooster. Следите за скоростью набора текста</h1>
 
+  <button 
+  type="button" 
+  aria-label="button"
+  @click="refresh"
+   >
+    зарефетчить данные
+  </button>
+
   <div class="random-text">
     <p>рандомный текст с forismatic.com через API</p>
     <p v-if="pending">Загрузка...</p> 
@@ -60,7 +68,7 @@ const timerFormatted = computed(() => {
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 });
 
-const { data, pending, error } = await useFetch(() => `https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru`);
+const { data, pending, error, refresh } = await useFetch(() => `https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru`);
 
 randomTextFromApi.value = data.value.quoteText;
 
