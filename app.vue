@@ -1,9 +1,11 @@
 <template>
   <h1>Наблюдатель searchbooster. Следите за скоростью набора текста</h1>
 
-  <div v-if="textFromAPI !== ''" class="random-text">
+  <div class="random-text">
     <p>рандомный текст с forismatic.com через API</p>
-    <p>{{ textFromAPI }}</p>
+    <p v-if="pending">Загрузка...</p> 
+    <p v-else-if="error">{{ error.data }}</p> 
+    <p v-else>{{ randomTextFromApi }}</p>
   </div>
 
   <button 
@@ -39,7 +41,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
+
+
 
 const sentenceToType = ref('');
 const startTime = ref(null);
@@ -48,7 +52,7 @@ const timer = ref(0);
 const typingSpeed = ref(0);
 const charactersTyped = ref(0);
 const accuracy = ref(0);
-const textFromAPI = ref('');
+const randomTextFromApi = ref('');
 
 const timerFormatted = computed(() => {
   const minutes = Math.floor(timer.value / 60);
@@ -56,26 +60,9 @@ const timerFormatted = computed(() => {
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 });
 
-const fetchRandomTextFromAPI = async () => {
-  await fetch('https://stalwart-sunshine-d9907e.netlify.app/https://api.forismatic.com/api/1.0/', {
-    "headers":{"content-type":"application/x-www-form-urlencoded"},
-    "body":"method=getQuote&format=json&key=&lang=ru",
-    "method":"POST"
-  })
-  .then(response => {
-    if (!response.ok) {
-      console.log(response);
-      throw new Error('Network response was not ok');
-    }
-    return response.json();
-  })
-  .then(data => {
-    textFromAPI.value = data.quoteText;
-  })
-  .catch(error => {
-    console.error('Error fetching data:', error);
-  });
-};
+const { data, pending, error } = await useFetch(() => `https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru`);
+
+randomTextFromApi.value = data.value.quoteText;
 
 const startTimer = () => {
     timer.value = 60;
@@ -88,7 +75,7 @@ const updateStats = () => {
 
   if(charactersTyped.value > 0) {
     const typedText = sentenceToType.value.slice(0, charactersTyped.value);
-  const originalText = textFromAPI.value.slice(0, charactersTyped.value);
+    const originalText = randomTextFromApi.value.slice(0, charactersTyped.value);
   let errors = 0;
   for (let i = 0; i < typedText.length; i++) {
     if (typedText[i] !== originalText[i]) {
@@ -105,13 +92,9 @@ const updateStats = () => {
 watch(sentenceToType, () => {
   charactersTyped.value = sentenceToType.value.length;
   updateStats();
-  if(sentenceToType.value.length === textFromAPI.value.length) {
+  if(sentenceToType.value.length === randomTextFromApi.value.length) {
     endTime.value = Date.now();
   }
-});
-
-onMounted(() => {
-  fetchRandomTextFromAPI();
 });
 
 setInterval(() => {
