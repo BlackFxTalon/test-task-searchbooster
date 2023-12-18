@@ -1,7 +1,7 @@
 <template>
   <h1>Наблюдатель searchbooster. Следите за скоростью набора текста</h1>
 
-  <div v-if="textFromAPI !== ''">
+  <div v-if="textFromAPI !== ''" class="random-text">
     <p>рандомный текст с forismatic.com через API</p>
     <p>{{ textFromAPI }}</p>
   </div>
@@ -9,20 +9,20 @@
   <button 
   type="button" 
   aria-label="button"
-  v-if="textFromAPI !== '' && sentenceToType !== ''"
+  v-if="sentenceToType === ''"
   @click="startTimer"
    >
     Начать тест
   </button>
 
-  <div v-if="timer > 0">
+  <div v-if="timer > 0" class="track-text">
       <p>Времени осталось: {{ timerFormatted }}</p>
       <p>Скорость набора текста: {{ typingSpeed }} символов в минуту</p>
       <p>Введенные символы: {{ charactersTyped }}</p>
       <p>Точность: {{ accuracy }}%</p>
   </div>
 
-  <div v-else-if="timer === 0 && sentenceToType.length > 0">
+  <div v-else-if="timer === 0 && sentenceToType.length > 0" class="track-text">
       <p>Тест закончен!</p>
       <p>Скорость набора текста: {{ typingSpeed }} символов в минуту</p>
       <p>Введенные символы: {{ charactersTyped }}</p>
@@ -57,26 +57,15 @@ const timerFormatted = computed(() => {
 });
 
 const fetchRandomTextFromAPI = async () => {
-  const randomKey = Math.floor(Math.random() * 500000) + 1;
-  await fetch('https://api.forismatic.com/api/1.0/', {
-  method: 'POST',
-  mode: 'no-cors',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: new URLSearchParams({
-    method: 'getQuote',
-    key: `${randomKey}`,
-    format: 'json',
-    lang: 'ru'
+  await fetch('https://api.forismatic.com/api/1.0/?method=getQuote&format=html&lang=ru', {
+    mode: 'no-cors'
   })
-})
   .then(response => {
     if (!response.ok) {
       console.log(response);
       throw new Error('Network response was not ok');
     }
-    return response.json();
+    return response;
   })
   .then(data => {
     textFromAPI.value = data.quoteText;
@@ -87,16 +76,16 @@ const fetchRandomTextFromAPI = async () => {
 };
 
 const startTimer = () => {
-  if(!startTime.value === 0 && sentenceToType.value.length > 0) {
     timer.value = 60;
     startTime.value = Date.now();
-  }
 };
 
 const updateStats = () => {
   const elapsedTime = (Date.now() - startTime.value) / 1000;
   typingSpeed.value = Math.round((charactersTyped.value / elapsedTime) * 60);
-  const typedText = sentenceToType.value.slice(0, charactersTyped.value);
+
+  if(charactersTyped.value > 0) {
+    const typedText = sentenceToType.value.slice(0, charactersTyped.value);
   const originalText = textFromAPI.value.slice(0, charactersTyped.value);
   let errors = 0;
   for (let i = 0; i < typedText.length; i++) {
@@ -105,6 +94,10 @@ const updateStats = () => {
     }
   }
   accuracy.value = Math.round(((charactersTyped.value - errors) / charactersTyped.value) * 100);
+  } else {
+    accuracy.value = 0;
+  }
+  
 }
 
 watch(sentenceToType, () => {
@@ -127,3 +120,51 @@ setInterval(() => {
 }, 1000);
 
 </script>
+
+<style scoped>
+:global(body) {
+  font-family: 'Roboto', sans-serif;
+}
+h1 {
+  text-align: center;
+}
+
+button {
+  padding: 0;
+  margin: 0 auto;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  background-color: skyblue;
+  border-color: transparent;
+  width: 100%;
+  max-width: 150px;
+  height: 30px;
+  color: white;
+  font-family: inherit;
+}
+  fieldset {
+    padding: 0;
+    margin: 0;
+    border: none;
+  }
+
+  textarea {
+    width: 100%;
+    max-width: 1300px;
+    margin: auto;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+    height: 200px;
+    resize: none;
+    font-family: inherit;
+  }
+
+  .track-text,
+  .random-text {
+    text-align: center;
+  }
+</style>
