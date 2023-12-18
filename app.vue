@@ -58,12 +58,32 @@ const timerFormatted = computed(() => {
 
 const fetchRandomTextFromAPI = async () => {
   const randomKey = Math.floor(Math.random() * 500000) + 1;
-  const response = await fetch(`https://api.forismatic.com/api/1.0/?method=getQuote&key=${randomKey}&format=json&lang=ru`, {
-    mode: 'no-cors'
+  await fetch('https://api.forismatic.com/api/1.0/', {
+  method: 'POST',
+  mode: 'no-cors',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: new URLSearchParams({
+    method: 'getQuote',
+    key: `${randomKey}`,
+    format: 'json',
+    lang: 'ru'
+  })
+})
+  .then(response => {
+    if (!response.ok) {
+      console.log(response);
+      throw new Error('Network response was not ok');
+    }
+    return response.json();
+  })
+  .then(data => {
+    textFromAPI.value = data.quoteText;
+  })
+  .catch(error => {
+    console.error('Error fetching data:', error);
   });
-  console.log(response);
-  const data = await response.json();
-  textFromAPI.value = data.quoteText;
 };
 
 const startTimer = () => {
