@@ -1,39 +1,34 @@
 <template>
   <h1>Наблюдатель searchbooster. Следите за скоростью набора текста</h1>
 
-  <button 
-  type="button" 
-  aria-label="button"
-  @click="refresh"
-   >
-    зарефетчить данные
-  </button>
-
   <div class="random-text">
-    <p>рандомный текст с forismatic.com через API</p>
+    <p>Случайная цитата с forismatic.com</p>
     <p v-if="pending">Загрузка...</p> 
     <p v-else-if="error">{{ error.data }}</p> 
-    <p v-else>{{ randomTextFromApi }}</p>
+    <p v-else>{{ randomTextFromApi.res.quoteText }}</p>
   </div>
 
   <button 
   type="button" 
   aria-label="button"
-  v-if="sentenceToType === ''"
+  :disabled="timer > 0"
+  @click="refresh"
+   >
+    Обновить цитату
+  </button>
+
+  <button 
+  type="button" 
+  aria-label="button"
+  v-if="timer === 0"
   @click="startTimer"
    >
     Начать тест
   </button>
 
-  <div v-if="timer > 0" class="track-text">
+  <div class="track-text">
+      <p v-if="timer === 0 && sentenceToType.value > 0">Тест закончен!</p>
       <p>Времени осталось: {{ timerFormatted }}</p>
-      <p>Скорость набора текста: {{ typingSpeed }} символов в минуту</p>
-      <p>Введенные символы: {{ charactersTyped }}</p>
-      <p>Точность: {{ accuracy }}%</p>
-  </div>
-
-  <div v-else-if="timer === 0 && sentenceToType.length > 0" class="track-text">
-      <p>Тест закончен!</p>
       <p>Скорость набора текста: {{ typingSpeed }} символов в минуту</p>
       <p>Введенные символы: {{ charactersTyped }}</p>
       <p>Точность: {{ accuracy }}%</p>
@@ -41,26 +36,32 @@
 
   <form action="#" method="post" class="form">
     <fieldset class="form__fieldset">
-      <label class="form__label" for="sentenceInput"></label>
-      <textarea id="sentenceInput" v-model="sentenceToType" @input="updateStats"></textarea>
+      <ClientOnly>
+      <textarea 
+      ref="sentenceTextArea"
+      v-model.trim="sentenceToType" 
+      @input="updateStats"
+      :disabled="timer === 0"
+      >
+      </textarea>
+      </ClientOnly>
     </fieldset>
   </form>
 
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 
 
 
 const sentenceToType = ref('');
+const sentenceTextArea = ref(null);
 const startTime = ref(null);
-const endTime = ref(null);
 const timer = ref(0);
 const typingSpeed = ref(0);
 const charactersTyped = ref(0);
 const accuracy = ref(0);
-const randomTextFromApi = ref('');
 
 const timerFormatted = computed(() => {
   const minutes = Math.floor(timer.value / 60);
@@ -68,22 +69,36 @@ const timerFormatted = computed(() => {
   return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 });
 
-const { data, pending, error, refresh } = await useFetch(() => `https://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=ru`);
+const { data: randomTextFromApi, pending, error, refresh } = await useFetch('/api/getRandomQuote');
 
-randomTextFromApi.value = data.value.quoteText;
-
-const startTimer = () => {
-    timer.value = 60;
-    startTime.value = Date.now();
+const restart = () => {
+  sentenceToType.value = '';
+  charactersTyped.value = 0;
+  typingSpeed.value = 0;
+  accuracy.value = 0;
 };
 
+const startTimer = () => {
+    restart();
+    timer.value = 60;
+    startTime.value = Date.now();
+    setTimeout(() => {
+      sentenceTextArea.value.focus();
+    }, 0);
+};
+
+onMounted(() => {
+  console.log(typeof randomTextFromApi.value.res.quoteText.length);
+});
+
 const updateStats = () => {
+  charactersTyped.value = sentenceToType.value.length;
   const elapsedTime = (Date.now() - startTime.value) / 1000;
   typingSpeed.value = Math.round((charactersTyped.value / elapsedTime) * 60);
 
   if(charactersTyped.value > 0) {
-    const typedText = sentenceToType.value.slice(0, charactersTyped.value);
-    const originalText = randomTextFromApi.value.slice(0, charactersTyped.value);
+  const typedText = sentenceToType.value.slice(0, charactersTyped.value);
+  const originalText = randomTextFromApi.value.res.quoteText.slice(0, charactersTyped.value);
   let errors = 0;
   for (let i = 0; i < typedText.length; i++) {
     if (typedText[i] !== originalText[i]) {
@@ -94,15 +109,14 @@ const updateStats = () => {
   } else {
     accuracy.value = 0;
   }
-  
+
+  if(charactersTyped.value === randomTextFromApi.value.res.quoteText.length) {
+    timer.value = 0;
+  }
 }
 
 watch(sentenceToType, () => {
-  charactersTyped.value = sentenceToType.value.length;
   updateStats();
-  if(sentenceToType.value.length === randomTextFromApi.value.length) {
-    endTime.value = Date.now();
-  }
 });
 
 setInterval(() => {
@@ -137,6 +151,7 @@ button {
   height: 30px;
   color: white;
   font-family: inherit;
+  cursor: pointer;
 }
   fieldset {
     padding: 0;
